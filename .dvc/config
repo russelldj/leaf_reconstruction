@@ -1,4 +1,6 @@
 [core]
     remote = origin
+[cache]
+    type = "hardlink,symlink"
 ['remote "origin"']
     url = gdrive://1ZfoIXsjYgWeucE1ULBu40_ViPj8ub5t6
