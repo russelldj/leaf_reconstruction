@@ -1,4 +1,37 @@
 from pathlib import Path
+from ubelt import ensuredir
+
+
+def pad_filename(
+    filename: Path, start_index: int = None, end_index: int = None, pad_length: int = 6
+):
+    stem = int(filename[start_index:end_index])
+    extension = Path(filename).suffix
+    formatted_stem = f"{stem:0{pad_length}d}"
+    return formatted_stem, extension
+
+
+def pad_filepath(
+    filepath: Path, start_index: int = None, end_index: int = None, pad_length: int = 6
+):
+    """
+    filename:
+        The filename to pad. Can be relative or absolute path
+    pad_length:
+        How digits it should have
+
+    returns:
+        The padded filename, at the same depth it was originally
+    """
+    parent = filepath.parent
+    formatted_stem, extension = pad_filename(
+        filepath.stem,
+        start_index=start_index,
+        end_index=end_index,
+        pad_length=pad_length,
+    )
+    output = Path(parent, formatted_stem + extension)
+    return output
 
 
 def get_files(
@@ -25,7 +58,6 @@ def get_files(
         raise ValueError(
             "Both require_dir and require_file set. Nothing satisfies both."
         )
-
     files = Path(folder).glob(pattern)
     if sort:
         files = sorted(files)
@@ -37,3 +69,7 @@ def get_files(
         files = [f for f in files if f.is_file()]
 
     return files
+
+
+def ensure_dir_normal_bits(folder):
+    ensuredir(folder, mode=0o0755)
