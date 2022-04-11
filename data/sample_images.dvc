@@ -1,0 +1,5 @@
+outs:
+- md5: 2675b18cdb357aa1f2e8b7ae5740a548.dir
+  size: 92789251
+  nfiles: 20
+  path: sample_images
