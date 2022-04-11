@@ -9,5 +9,5 @@ import numpy as np
 #                 Skew: 0
 #      IntrinsicMatrix: [3×3 double]
 MATLAB_RADIAL_DISTORTION: np.array([0.2160 - 2.5620])
-MATLAB_K = np.array([[8.0742, 0, 0], [0, 8.0810, 0], [1.2867, 1.1241, 0.0010]])
+MATLAB_K = np.array([[8074.2, 0, 0], [0, 8081.0, 0], [1286.7, 1124.1, 1.0]])
 

@@ -1,10 +1,15 @@
+from pathlib import Path
+from venv import create
+
 import matplotlib.pyplot as plt
 import numpy as np
 from imageio import imread
+from leaf_reconstruction.config import MATLAB_K
+from leaf_reconstruction.spatial.space_carving import space_carving
+from pyvista import PolyData
+from scipy.spatial.transform import Rotation
 from skimage.color import rgb2hsv
-
 from skimage.measure import label
-from pathlib import Path
 
 
 def getLargestCC(segmentation):
@@ -33,16 +38,31 @@ def threshold_image(image, lower_bounds, upper_bounds):
     return mask
 
 
-def segment(filename, lower_bounds, upper_bounds):
+def segment(filename, lower_bounds, upper_bounds, vis=False):
     image = imread(filename)[..., :3] / 255.0
 
     thresholded_image = threshold_image(image, lower_bounds, upper_bounds)
+    if vis:
+        fig, axs = plt.subplots(1, 3)
+        axs[0].imshow(image)
+        axs[1].imshow(rgb2hsv(image))
+        axs[2].imshow(thresholded_image)
+        plt.show()
+    return thresholded_image
 
-    fig, axs = plt.subplots(1, 3)
-    axs[0].imshow(image)
-    axs[1].imshow(rgb2hsv(image))
-    axs[2].imshow(thresholded_image)
-    plt.show()
+
+def create_projection_matrices(files, dist=2.5, K=MATLAB_K):
+    C = np.expand_dims(np.array((dist, 0, 0)), axis=1)
+    degrees = [int(x.stem) for x in files]
+    rotation_matrices = [
+        Rotation.from_euler("xyz", (90, angle, 0), degrees=True).as_matrix()
+        for angle in degrees
+    ]
+    print(rotation_matrices)
+    # ts = [np.expand_dims(-R @ C, axis=1) for R in rotation_matrices]
+    homogs = [np.concatenate((R, C), axis=1) for R in rotation_matrices]
+    Ps = [K @ homog for homog in homogs]
+    return Ps
 
 
 hue = np.array([0.051, 0.503])
@@ -54,6 +74,12 @@ lower_bounds, upper_bounds = zip(hue, saturation, value)
 FOLDER = Path(
     "/home/frc-ag-1/data/learning_3D_plants/10sides_transformed/88-181-Maize01/2017-09-09/all_imgs"
 )
-files = FOLDER.glob("*")
-[segment(file, lower_bounds, upper_bounds) for file in files]
+files = list(FOLDER.glob("*"))
+projections = create_projection_matrices(files)
 
+segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
+
+good_points = space_carving(projections, segmentations, threshold=1)
+pc = PolyData(good_points[:, :3])
+pc.plot()
+breakpoint()
