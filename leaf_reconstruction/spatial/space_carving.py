@@ -1,12 +1,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pyvista as pv
+from typing import List, Set, Dict, Tuple, Optional
 
 
 def space_carving(
-    extrinsics, K, silhouettes, num_voxels=120, volume_scale=2, threshold=3, vis=False
+    extrinsics: List[np.ndarray],
+    K: np.ndarray,
+    silhouettes: List[np.ndarray],
+    num_voxels: int = 120,
+    volume_scale: float = 2,
+    threshold: int = 3,
+    vis: bool = False,
 ):
+    """ Create point cloud from region observed by most cameras
 
+    extrinsics: Matrices relating world to local coordinates
+    K: Matrix relating local 3D coordinates to pixel coordinates
+    silhouettes: List of binary images representing the object
+    num_voxels: the number of voxels per dimension in the grid
+    volume_scale: dimension of the cube
+    threshold: the number of views a point needs to be seen in to be valid
+    vis: show debugging information
+    """
     x, y, z = np.mgrid[:num_voxels, :num_voxels, :num_voxels]
     pts = np.vstack((x.flatten(), y.flatten(), z.flatten())).astype(float)
     pts = pts.T
@@ -17,7 +33,7 @@ def space_carving(
     pts[:, 2] /= zmax
     center = pts.mean(axis=0)
     pts -= center
-    pts /= 2.5
+    pts /= volume_scale
     # pts[:, 2] -= 0.62
     plotter = pv.Plotter()
     pts = np.vstack((pts.T, np.ones((1, nb_points_init))))
