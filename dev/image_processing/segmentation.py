@@ -75,9 +75,7 @@ value = np.array([0.000, 0.786])
 
 lower_bounds, upper_bounds = zip(hue, saturation, value)
 
-FOLDER = Path(
-    "/home/frc-ag-1/data/learning_3D_plants/10sides_transformed/88-181-Maize01/2017-09-09/all_imgs"
-)
+FOLDER = Path("data/sample_images")
 files = list(FOLDER.glob("*"))
 files = [f for f in files if "seg" not in str(f)]
 projections = create_projection_matrices(files)
