@@ -12,7 +12,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-variable
 from numpy import linspace
 
-from constants import SQUARE_SIZE
+# from constants import SQUARE_SIZE
 
 
 def inverse_homogeneoux_matrix(M):
@@ -239,7 +239,7 @@ def visualize(
     scale_focal=1,
     board_width=9,
     board_height=6,
-    square_size=SQUARE_SIZE,
+    square_size=1,
     pattern_centric=True,
     image_shape=(1920, 1080),
 ):
