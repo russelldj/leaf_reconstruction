@@ -3,13 +3,15 @@ from venv import create
 
 import matplotlib.pyplot as plt
 import numpy as np
-from imageio import imread
+from imageio import imread, imwrite
 from leaf_reconstruction.config import MATLAB_K
 from leaf_reconstruction.spatial.space_carving import space_carving
 from pyvista import PolyData
 from scipy.spatial.transform import Rotation
 from skimage.color import rgb2hsv
 from skimage.measure import label
+from leaf_reconstruction.vis.vis import visualize
+import cv2
 
 
 def getLargestCC(segmentation):
@@ -52,15 +54,17 @@ def segment(filename, lower_bounds, upper_bounds, vis=False):
 
 
 def create_projection_matrices(files, dist=2.5, K=MATLAB_K):
-    C = np.expand_dims(np.array((dist, 0, 0)), axis=1)
+    C = np.array((0, 0, dist))
     degrees = [int(x.stem) for x in files]
-    rotation_matrices = [
-        Rotation.from_euler("xyz", (90, angle, 0), degrees=True).as_matrix()
-        for angle in degrees
+    rotations = [
+        Rotation.from_euler("yxz", (angle, 0, 0), degrees=True) for angle in degrees
     ]
-    print(rotation_matrices)
-    # ts = [np.expand_dims(-R @ C, axis=1) for R in rotation_matrices]
-    homogs = [np.concatenate((R, C), axis=1) for R in rotation_matrices]
+    rotation_matrices = [rotation.as_matrix() for rotation in rotations]
+    rotation_rodrigues = [cv2.Rodrigues(R)[0] for R in rotation_matrices]
+    ts = [np.expand_dims(C, axis=1) for R in rotation_matrices]
+
+    visualize(rotation_rodrigues, ts, K)
+    homogs = [np.concatenate((R, t), axis=1) for R, t in zip(rotation_matrices, ts)]
     Ps = [K @ homog for homog in homogs]
     return Ps
 
@@ -75,10 +79,13 @@ FOLDER = Path(
     "/home/frc-ag-1/data/learning_3D_plants/10sides_transformed/88-181-Maize01/2017-09-09/all_imgs"
 )
 files = list(FOLDER.glob("*"))
+files = [f for f in files if "seg" not in str(f)]
 projections = create_projection_matrices(files)
 
 segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
-
+output_files = [str(x).replace(".png", "_seg.png") for x in files]
+[imwrite(f, i.astype(np.uint8)) for f, i in zip(output_files, segmentations)]
+breakpoint()
 good_points = space_carving(projections, segmentations, threshold=1)
 pc = PolyData(good_points[:, :3])
 pc.plot()
