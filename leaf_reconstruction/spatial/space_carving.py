@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pyvista as pv
 
 
 def space_carving(
-    projections, silhouettes, num_voxels=120, volume_scale=2, threshold=3
+    extrinsics, K, silhouettes, num_voxels=120, volume_scale=2, threshold=3, vis=False
 ):
 
     x, y, z = np.mgrid[:num_voxels, :num_voxels, :num_voxels]
@@ -16,15 +17,22 @@ def space_carving(
     pts[:, 2] /= zmax
     center = pts.mean(axis=0)
     pts -= center
-    pts /= 1
+    pts /= 2.5
     # pts[:, 2] -= 0.62
-
+    plotter = pv.Plotter()
     pts = np.vstack((pts.T, np.ones((1, nb_points_init))))
+    if vis:
+        pc = pv.PolyData(pts[:3].T)
+        for extrinsic in extrinsics:
+            print(extrinsic)
+
+        plotter.add_mesh(pc)
+        plotter.show()
 
     filled = []
-    for P, im in zip(projections, silhouettes):
+    for extrinsic, im in zip(extrinsics, silhouettes):
         img_h, img_w = im.shape[:2]
-        uvs = P @ pts
+        uvs = K @ extrinsic @ pts
         z_good = uvs[2] > 0
         uvs /= uvs[2, :]
         uvs = np.round(uvs).astype(int)
@@ -34,8 +42,12 @@ def space_carving(
         indices = np.where(good)[0]
         fill = np.zeros(uvs.shape[1])
         sub_uvs = uvs[:2, indices]
-        plt.scatter(sub_uvs[0], sub_uvs[1])
-        plt.show()
+        if vis:
+            fig, axs = plt.subplots(1, 2)
+            axs[0].scatter(sub_uvs[0], sub_uvs[1])
+            axs[1].imshow(im)
+            plt.show()
+            plt.close()
         res = im[sub_uvs[1, :], sub_uvs[0, :]]
         fill[indices] = res
 

@@ -74,7 +74,7 @@ def create_projection_matrices(files, dist=2.5, K=MATLAB_K, vis=False):
     if vis:
         rotation_rodrigues = [cv2.Rodrigues(R)[0] for R in rotation_matrices]
         visualize(rotation_rodrigues, ts, K)
-    return Ps
+    return homogs, Ps
 
 
 hue = np.array([0.051, 0.503])
@@ -86,11 +86,13 @@ lower_bounds, upper_bounds = zip(hue, saturation, value)
 FOLDER = Path("data/sample_images")
 files = list(sorted(FOLDER.glob("*")))
 files = [f for f in files if "seg" not in str(f)]
-projections = create_projection_matrices(files, vis=False)
+extrinsics, projections = create_projection_matrices(files, vis=False)
 
 segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
 # output_files = [str(x).replace(".png", "_seg.png") for x in files]
 # [imwrite(f, i.astype(np.uint8)) for f, i in zip(output_files, segmentations)]
-good_points = space_carving(projections, segmentations, threshold=1)
+good_points = space_carving(
+    extrinsics=extrinsics, K=MATLAB_K, silhouettes=segmentations, threshold=7
+)
 pc = PolyData(good_points[:, :3])
 pc.plot()
