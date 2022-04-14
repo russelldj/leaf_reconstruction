@@ -23,7 +23,11 @@ def space_carving(
     threshold: the number of views a point needs to be seen in to be valid
     vis: show debugging information
     """
-    x, y, z = np.mgrid[:num_voxels, :num_voxels, :num_voxels]
+    volume = pv.UniformGrid(dims=(num_voxels, num_voxels, num_voxels))
+    x = volume.x
+    y = volume.y
+    z = volume.z
+    # x, y, z = np.mgrid[:num_voxels, :num_voxels, :num_voxels]
     pts = np.vstack((x.flatten(), y.flatten(), z.flatten())).astype(float)
     pts = pts.T
     nb_points_init = pts.shape[0]
@@ -74,5 +78,12 @@ def space_carving(
     # Select occupied voxels
     pts = pts.T
     good_points = pts[occupancy > threshold, :]
+
+    contours = volume.contour((threshold,), scalars=occupancy)
+
+    # z = probs_contours.points[:, -1]
+    # plotter.add_mesh(probs_contours, scalars=z)
+    plotter.add_mesh(contours)
+    plotter.show()
 
     return good_points
