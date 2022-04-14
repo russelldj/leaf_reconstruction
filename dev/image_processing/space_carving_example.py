@@ -4,7 +4,7 @@ from venv import create
 import matplotlib.pyplot as plt
 import numpy as np
 from imageio import imread, imwrite
-from leaf_reconstruction.config import MATLAB_K
+from leaf_reconstruction.config import ARTIFICIALLY_CENTERED_K
 from leaf_reconstruction.spatial.space_carving import space_carving
 from pyvista import PolyData
 from scipy.spatial.transform import Rotation
@@ -53,7 +53,7 @@ def segment(filename, lower_bounds, upper_bounds, vis=False):
     return thresholded_image
 
 
-def create_projection_matrices(files, dist=2.5, K=MATLAB_K, vis=False):
+def create_projection_matrices(files, dist=2.5, K=ARTIFICIALLY_CENTERED_K, vis=False):
     # The world Z is up and we start at the negative X configuration
     initial_rotation = Rotation.from_euler(
         "xyz", (90, 270, 0), degrees=True
@@ -92,7 +92,10 @@ segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
 # output_files = [str(x).replace(".png", "_seg.png") for x in files]
 # [imwrite(f, i.astype(np.uint8)) for f, i in zip(output_files, segmentations)]
 good_points = space_carving(
-    extrinsics=extrinsics, K=MATLAB_K, silhouettes=segmentations, threshold=7
+    extrinsics=extrinsics,
+    K=ARTIFICIALLY_CENTERED_K,
+    silhouettes=segmentations,
+    threshold=9,
 )
 pc = PolyData(good_points[:, :3])
 pc.plot()
