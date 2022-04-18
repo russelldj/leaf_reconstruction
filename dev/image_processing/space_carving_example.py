@@ -13,6 +13,12 @@ from skimage.measure import label
 from leaf_reconstruction.vis.vis import visualize
 import cv2
 
+HUE = np.array([0.051, 0.503])
+SATURATION = np.array([0.102, 0.804])
+VALUE = np.array([0.000, 0.786])
+
+LOWER_BOUNDS, UPPER_BOUNDS = zip(HUE, SATURATION, VALUE)
+
 
 def getLargestCC(segmentation):
     """https://stackoverflow.com/questions/47540926/get-the-largest-connected-component-of-segmentation-image"""
@@ -40,7 +46,7 @@ def threshold_image(image, lower_bounds, upper_bounds):
     return mask
 
 
-def segment(filename, lower_bounds, upper_bounds, vis=False):
+def segment(filename, lower_bounds=LOWER_BOUNDS, upper_bounds=UPPER_BOUNDS, vis=False):
     image = imread(filename)[..., :3] / 255.0
 
     thresholded_image = threshold_image(image, lower_bounds, upper_bounds)
@@ -53,13 +59,18 @@ def segment(filename, lower_bounds, upper_bounds, vis=False):
     return thresholded_image
 
 
-def create_projection_matrices(files, dist=2.5, K=ARTIFICIALLY_CENTERED_K, vis=False):
+def create_projection_matrices(
+    files, dist=2.5, K=ARTIFICIALLY_CENTERED_K, vis=False, degrees=None
+):
     # The world Z is up and we start at the negative X configuration
     initial_rotation = Rotation.from_euler(
         "xyz", (90, 270, 0), degrees=True
     ).as_matrix()
     C = np.array((0, 0, dist))
-    degrees = [int(x.stem) for x in files]
+
+    if degrees is None:
+        degrees = [int(x.stem) for x in files]
+
     rotations = [
         Rotation.from_euler("yxz", (angle, 0, 0), degrees=True) for angle in degrees
     ]
@@ -77,25 +88,37 @@ def create_projection_matrices(files, dist=2.5, K=ARTIFICIALLY_CENTERED_K, vis=F
     return homogs, Ps
 
 
-hue = np.array([0.051, 0.503])
-saturation = np.array([0.102, 0.804])
-value = np.array([0.000, 0.786])
+def main(
+    files,
+    lower_bounds=LOWER_BOUNDS,
+    upper_bounds=UPPER_BOUNDS,
+    degrees=None,
+    k=ARTIFICIALLY_CENTERED_K,
+    pointcloud=False,
+):
+    extrinsics, projections = create_projection_matrices(
+        files, vis=False, degrees=degrees
+    )
 
-lower_bounds, upper_bounds = zip(hue, saturation, value)
+    segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
+    # output_files = [str(x).replace(".png", "_seg.png") for x in files]
+    # [imwrite(f, i.astype(np.uint8)) for f, i in zip(output_files, segmentations)]
+    good_points = space_carving(
+        extrinsics=extrinsics,
+        num_voxels=300,
+        K=k,
+        silhouettes=segmentations,
+        volume_scale=0.4,
+        threshold=9,
+    )
+    if pointcloud:
+        pc = PolyData(good_points[:, :3])
+        pc.plot()
 
-FOLDER = Path("data/sample_images")
-files = list(sorted(FOLDER.glob("*")))
-files = [f for f in files if "seg" not in str(f)]
-extrinsics, projections = create_projection_matrices(files, vis=False)
 
-segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
-# output_files = [str(x).replace(".png", "_seg.png") for x in files]
-# [imwrite(f, i.astype(np.uint8)) for f, i in zip(output_files, segmentations)]
-good_points = space_carving(
-    extrinsics=extrinsics,
-    K=ARTIFICIALLY_CENTERED_K,
-    silhouettes=segmentations,
-    threshold=9,
-)
-pc = PolyData(good_points[:, :3])
-pc.plot()
+if __name__ == "__main__":
+
+    folder = Path("data/sample_images")
+    files = list(sorted(folder.glob("*")))
+    files = [f for f in files if "seg" not in str(f)]
+    main(files, LOWER_BOUNDS, UPPER_BOUNDS)
