@@ -31,9 +31,12 @@ def main(input_dir):
     folders = get_files(input_dir, "*", require_dir=True)
     # Exclude the one taken from the top
     for folder in tqdm(folders):
-        print(f"Processing {folders}")
+        print(f"Processing {folder}")
         files, degrees = get_files_in_folder(folder)
-        spacecarving_main(files, degrees=degrees)
+        try:
+            spacecarving_main(files, degrees=degrees)
+        except ValueError as e:
+            print(e)
 
 
 if __name__ == "__main__":
