@@ -37,7 +37,7 @@ def space_carving(
     pts[:, 2] /= zmax
     center = pts.mean(axis=0)
     pts -= center
-    pts /= volume_scale
+    pts *= volume_scale
     # pts[:, 2] -= 0.62
     plotter = pv.Plotter()
     pts = np.vstack((pts.T, np.ones((1, nb_points_init))))
