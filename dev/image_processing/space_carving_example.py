@@ -50,7 +50,12 @@ def segment(filename, lower_bounds, upper_bounds, vis=False):
         axs[1].imshow(rgb2hsv(image))
         axs[2].imshow(thresholded_image)
         plt.show()
-    return thresholded_image
+    
+    for i in range(3):
+        image[:, :, i] = image[:, :, i]*thresholded_image
+
+    #return thresholded_image
+    return image
 
 
 def create_projection_matrices(files, dist=2.5, K=ARTIFICIALLY_CENTERED_K, vis=False):
@@ -74,6 +79,13 @@ def create_projection_matrices(files, dist=2.5, K=ARTIFICIALLY_CENTERED_K, vis=F
     if vis:
         rotation_rodrigues = [cv2.Rodrigues(R)[0] for R in rotation_matrices]
         visualize(rotation_rodrigues, ts, K)
+
+    np.save('./data/calibrations/intrinsics.npy', K)
+    for i in range(len(homogs)):
+        homog = homogs[i]
+        degree = degrees[i]
+        np.save(f"./data/calibrations/extrinsics_{degree:03d}.npy", homog)
+    
     return homogs, Ps
 
 
@@ -86,16 +98,20 @@ lower_bounds, upper_bounds = zip(hue, saturation, value)
 FOLDER = Path("data/sample_images")
 files = list(sorted(FOLDER.glob("*")))
 files = [f for f in files if "seg" not in str(f)]
+files = [f for f in files if "mask" not in str(f)]
 extrinsics, projections = create_projection_matrices(files, vis=False)
 
 segmentations = [segment(file, lower_bounds, upper_bounds) for file in files]
-# output_files = [str(x).replace(".png", "_seg.png") for x in files]
-# [imwrite(f, i.astype(np.uint8)) for f, i in zip(output_files, segmentations)]
+output_files = [str(x).replace(".png", "_seg.png") for x in files]
+#[imwrite(f, i.astype(np.uint8)*255) for f, i in zip(output_files, segmentations)]
+[imwrite(f, (i*255).astype(np.uint8)) for f, i in zip(output_files, segmentations)]
+mask_files = [str(x).replace(".png", "_mask.png") for x in files]
+[imwrite(f, np.zeros((2056, 2454)).astype(np.uint8) + 255) for f, i in zip(mask_files, segmentations)]
 good_points = space_carving(
     extrinsics=extrinsics,
     K=ARTIFICIALLY_CENTERED_K,
     silhouettes=segmentations,
-    threshold=9,
+    threshold=7,
 )
 pc = PolyData(good_points[:, :3])
 pc.plot()
