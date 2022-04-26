@@ -1,0 +1,4 @@
+outs:
+- md5: c5bf5348bacb97b6e566da086bf9f816
+  size: 7742
+  path: cameras_sphere.npz
