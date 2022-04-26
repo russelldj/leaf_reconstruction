@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from smtpd import DebuggingServer
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,8 +8,9 @@ from cv2 import imwrite
 import cv2
 from imageio import imread
 from leaf_reconstruction.files.utils import ensure_dir_normal_bits, get_files
-from leaf_reconstruction.img.create_neus_mask import create_seg
-from leaf_reconstruction.img.create_neus_npz import create_npz
+
+# from leaf_reconstruction.img.create_neus_mask import create_seg
+from leaf_reconstruction.img.create_neus_npz import save_npz_from_np_arrays
 from leaf_reconstruction.img.segment import segment
 from skimage.morphology import convex_hull_image, disk, binary_dilation
 
@@ -33,7 +35,7 @@ def expand_mask(mask, kernel_size=50):
     return mask
 
 
-def create_training_data(input_dir, output_dir):
+def create_training_data(input_dir, output_dir, just_npz=True):
     folders = get_files(input_dir, "*", require_dir=True)
     for folder in folders:
 
@@ -41,6 +43,14 @@ def create_training_data(input_dir, output_dir):
         files_degs = zip(files, degrees)
         # Sort by degrees
         files_degs = sorted(files_degs, key=lambda x: x[1])
+        degrees = [x[1] for x in files_degs]
+
+        output_stem = folder.parts[-1]
+        local_output_folder = Path(output_dir, output_stem)
+        save_npz_from_np_arrays(degrees, local_output_folder)
+
+        if just_npz:
+            continue
 
         imgs = [imread(file) for file, _ in files_degs]
 
@@ -55,8 +65,6 @@ def create_training_data(input_dir, output_dir):
         output_masks = [expand_mask(mask) for mask in segs]
         output_masks = [(mask * 255).astype(np.uint8) for mask in output_masks]
 
-        output_stem = folder.parts[-1]
-        local_output_folder = Path(output_dir, output_stem)
         local_img_output_folder = Path(local_output_folder, "image")
         local_mask_output_folder = Path(local_output_folder, "mask")
         ensure_dir_normal_bits(local_img_output_folder)
