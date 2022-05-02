@@ -35,7 +35,7 @@ def expand_mask(mask, kernel_size=50):
     return mask
 
 
-def create_training_data(input_dir, output_dir, just_npz=True):
+def create_training_data(input_dir, output_dir, just_npz=False):
     folders = get_files(input_dir, "*", require_dir=True)
     for folder in folders:
 
@@ -47,11 +47,10 @@ def create_training_data(input_dir, output_dir, just_npz=True):
 
         output_stem = folder.parts[-1]
         local_output_folder = Path(output_dir, output_stem)
-        save_npz_from_np_arrays(degrees, local_output_folder)
+        # save_npz_from_np_arrays(degrees, local_output_folder)
 
         if just_npz:
             continue
-
         imgs = [imread(file) for file, _ in files_degs]
 
         segs = [segment(file) for file, _ in files_degs]
@@ -62,8 +61,8 @@ def create_training_data(input_dir, output_dir, just_npz=True):
             img[not_seg] = 0
             masked_images.append(img[..., :3])
 
-        output_masks = [expand_mask(mask) for mask in segs]
-        output_masks = [(mask * 255).astype(np.uint8) for mask in output_masks]
+        # output_masks = [expand_mask(mask) for mask in segs]
+        # output_masks = segs  # [(mask * 255).astype(np.uint8) for mask in output_masks]
 
         local_img_output_folder = Path(local_output_folder, "image")
         local_mask_output_folder = Path(local_output_folder, "mask")
@@ -77,7 +76,12 @@ def create_training_data(input_dir, output_dir, just_npz=True):
             imwrite(str(f), np.flip(img, axis=2))
             for f, img in zip(output_img_files, masked_images)
         ]
-        [imwrite(str(f), seg) for f, seg in zip(output_mask_files, output_masks)]
+        plt.imshow(segs[0])
+        plt.show()
+        [
+            imwrite(str(f), (seg * 255).astype(np.uint8))
+            for f, seg in zip(output_mask_files, segs)
+        ]
 
         plt.imshow(masked_images[0])
         plt.pause(1)

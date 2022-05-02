@@ -11,6 +11,23 @@ import matplotlib.pyplot as plt
 ROOT_FOLDER = "/home/frc-ag-1/data/co3d/plant"
 
 
+def write_one_folder(folder, calibration_params, radius):
+    scale_mat = (np.eye(3) / radius).tolist()
+    output_dict = {"scale": scale_mat, "frame_params": []}
+    for capture in calibration_params:
+        viewpoint = capture["viewpoint"]
+        image = capture["image"]
+        path = image["path"]
+        path = Path(*Path(path).parts[2:])
+        im_size = image["size"]
+        viewpoint["path"] = path
+        viewpoint["size"] = im_size
+        output_dict["frame_params"].append(viewpoint)
+
+    output_file = Path(folder, "params.npz")
+    np.savez(output_file, output_dict)
+
+
 def process_CO3D_data(
     frame_annotation_file,
     quantile=0.95,
@@ -28,7 +45,10 @@ def process_CO3D_data(
 
     for k, v in by_sequence_dict.items():
         folder_name = Path(ROOT_FOLDER, k)
-        pointcloud_name = Path(ROOT_FOLDER, k, "pointcloud.ply")
+        try:
+            pointcloud_name = Path(ROOT_FOLDER, k, "pointcloud.ply")
+        except FileNotFoundError:
+            continue
         cloud = pv.read(pointcloud_name)
         dists = np.linalg.norm(cloud.points, axis=1)
         kth_quantile = np.quantile(dists, quantile)
@@ -51,6 +71,7 @@ def process_CO3D_data(
             del cloud
             del plotter
         print(pointcloud_name, radius)
+        write_one_folder(folder_name, v, radius)
 
 
 frame_annotations_file = Path(ROOT_FOLDER, "frame_annotations.jgz")
