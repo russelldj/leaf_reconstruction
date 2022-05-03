@@ -60,12 +60,14 @@ def process_CO3D_data(
             # plt.show()
 
             sphere = pv.Sphere(radius=radius)
-            plotter = pv.Plotter(off_screen=True)
+            # plotter = pv.Plotter(off_screen=True)
+            plotter = pv.Plotter()
             plotter.add_mesh(sphere, opacity=0.3)
             plotter.add_mesh(cloud, rgb=True)
             output_file = output_file_pattern.format(k)
             print(output_file)
-            plotter.show(screenshot=output_file)
+            plotter.show()
+            # plotter.show(screenshot=output_file)
             plotter.close()
             del sphere
             del cloud
@@ -75,4 +77,4 @@ def process_CO3D_data(
 
 
 frame_annotations_file = Path(ROOT_FOLDER, "frame_annotations.jgz")
-process_CO3D_data(frame_annotations_file, vis=False)
+process_CO3D_data(frame_annotations_file, vis=True)
