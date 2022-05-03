@@ -1,0 +1,5 @@
+outs:
+- md5: e5bb6c23e4ec04809c516c0f0284f932.dir
+  size: 44817267
+  nfiles: 426
+  path: co3d_sphere
