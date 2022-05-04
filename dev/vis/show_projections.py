@@ -18,38 +18,29 @@ def parse_args():
 
 
 # https://github.com/facebookresearch/co3d/blob/7ee9f5ba0b87b22e1dfe92c4d2010cb14dd467a6/dataset/co3d_dataset.py#L490
-def thing():
-    # principal point and focal length
-    principal_point = torch.tensor(entry.viewpoint.principal_point, dtype=torch.float)
-    focal_length = torch.tensor(entry.viewpoint.focal_length, dtype=torch.float)
+def co3d_rescale(principal_point, focal_length, im_wh):
 
     # first, we convert from the legacy Pytorch3D NDC convention
     # (currently used in CO3D for storing intrinsics) to pixels
-    half_image_size_wh_orig = (
-        torch.tensor(list(reversed(entry.image.size)), dtype=torch.float) / 2.0
-    )
+    half_image_size_wh_orig = im_wh / 2.0
 
     # principal point and focal length in pixels
     principal_point_px = -1.0 * (principal_point - 1.0) * half_image_size_wh_orig
     focal_length_px = focal_length * half_image_size_wh_orig
-    if self.box_crop:
-        assert clamp_bbox_xyxy is not None
-        principal_point_px -= clamp_bbox_xyxy[:2]
+    return principal_point_px, focal_length_px
 
-    # now, convert from pixels to Pytorch3D v0.5+ NDC convention
-    if self.image_height is None or self.image_width is None:
-        out_size = list(reversed(entry.image.size))
-    else:
-        out_size = [self.image_width, self.image_height]
 
-    half_image_size_output = torch.tensor(out_size, dtype=torch.float) / 2.0
-    half_min_image_size_output = half_image_size_output.min()
+def convert_NDC_to_screen_old_NDC(im_w, im_h, fx_ndc, fy_ndc, px_ndc, py_ndc):
+    principal_point_ndc = np.array((px_ndc, py_ndc))
+    focal_length_ndc = np.array((fx_ndc, fy_ndc))
+    im_wh = np.array((im_w, im_h))
 
-    # rescaled principal point and focal length in ndc
-    principal_point = (
-        half_image_size_output - principal_point_px * scale
-    ) / half_min_image_size_output
-    focal_length = focal_length_px * scale / half_min_image_size_output
+    principal_point_px, focal_length_px = co3d_rescale(
+        principal_point_ndc, focal_length_ndc, im_wh
+    )
+    fx_screen, fy_screen = focal_length_px
+    px_screen, py_screen = principal_point_px
+    return fx_screen, fy_screen, px_screen, py_screen
 
 
 def convert_NDC_to_screen(im_w, im_h, fx_ndc, fy_ndc, px_ndc, py_ndc):
@@ -92,7 +83,7 @@ def extract_K_R_t_from_frame_param(frame_param, K_in_NDC=False):
         fy_ndc = focal_length[1]
         px_ndc = principle_point[0]
         py_ndc = principle_point[1]
-        fx_screen, fy_screen, px_screen, py_screen = convert_NDC_to_screen(
+        fx_screen, fy_screen, px_screen, py_screen = convert_NDC_to_screen_old_NDC(
             im_h=im_h,
             im_w=im_w,
             fx_ndc=fx_ndc,
@@ -154,6 +145,8 @@ def main(camera_sphere, co3d_file, pointcloud_file):
         # plt.scatter(image_space[0], image_space[1])
         axs[0].scatter(image_space[0], image_space[1], c=downsampled_colors)
         axs[0].set_aspect("equal")
+        axs[0].set_xlim((0, image.shape[1]))
+        axs[0].set_ylim((0, image.shape[0]))
         axs[1].imshow(image)
         plt.show()
 
