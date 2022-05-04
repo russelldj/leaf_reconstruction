@@ -52,7 +52,7 @@ def convert_NDC_to_screen(im_w, im_h, fx_ndc, fy_ndc, px_ndc, py_ndc):
     return fx_screen, fy_screen, px_screen, py_screen
 
 
-def create_projection(K, R, t, method="flipped"):
+def create_projection(K, R, t, method="flipped_negated"):
     if method == "naive":
         extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
         print(K)
@@ -66,7 +66,16 @@ def create_projection(K, R, t, method="flipped"):
         K[1, 1] = -K[1, 1]
         extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
         proj = K @ extrinsics
-
+    if method == "flipped_negated":
+        R = np.array(R).T
+        K[0, 0] = -K[0, 0]
+        K[1, 1] = -K[1, 1]
+        extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
+        proj = K @ extrinsics
+    # out = cv2.decomposeProjectionMatrix(proj)
+    # print(out[0])
+    # print(out[1])
+    # print(out[2])
     return proj
 
 
@@ -180,14 +189,14 @@ def main(camera_sphere, co3d_file, pointcloud_file, side_by_side=False):
             image_space = convert_point_image_space_for_plotting(
                 image_space, image.shape[0]
             )
-            image_space = hack_plotting_to_work(image_space, image.shape[:2])
+            # image_space = hack_plotting_to_work(image_space, image.shape[:2])
             scat = axs[0].scatter(image_space[0], image_space[1], c=downsampled_colors)
             axs[0].set_aspect("equal")
             axs[0].set_xlim((0, image.shape[1]))
             axs[0].set_ylim((0, image.shape[0]))
             axs[1].imshow(image)
         else:
-            image_space = hack_plotting_to_work(image_space, image.shape[:2])
+            # image_space = hack_plotting_to_work(image_space, image.shape[:2])
             plt.imshow(image)
             scat = plt.scatter(image_space[0], image_space[1], c=downsampled_colors)
 
