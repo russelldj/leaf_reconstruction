@@ -56,13 +56,26 @@ def create_projection(K, R, t, method="naive"):
     if method == "naive":
         extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
         proj = K @ extrinsics
+    if method == "flipped":
+        R = np.array(R).T
+        extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
+        proj = K @ extrinsics
+    if method == "negated":
+        K[0, 0] = -K[0, 0]
+        K[1, 1] = -K[1, 1]
+        extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
+        proj = K @ extrinsics
 
     return proj
 
 
-def project_to_image(proj, points):
+def project_to_image(proj, points, filter=True):
     homog_image_space = proj @ points
     inhomog_image_space = homog_image_space[:2] / homog_image_space[2:]
+
+    if filter:
+        in_front = homog_image_space[2] > 0
+        inhomog_image_space = inhomog_image_space[:, in_front]
     return inhomog_image_space
 
 
@@ -107,7 +120,7 @@ def load_image_from_frame_param(frame_param, frame_param_file):
     return image
 
 
-def downsample_points_colors(points, colors, target_num=10000, no_op=True):
+def downsample_points_colors(points, colors, target_num=10000, no_op=False):
     if no_op:
         return points, colors
     num_points = points.shape[1]
@@ -118,7 +131,26 @@ def downsample_points_colors(points, colors, target_num=10000, no_op=True):
     return downsampled_points, downsampled_colors
 
 
-def main(camera_sphere, co3d_file, pointcloud_file):
+def convert_point_image_space_for_plotting(image_points, image_height):
+    image_points_y = image_points[1]
+    image_points_y = image_height - image_points_y
+    image_points[1] = image_points_y
+    return image_points
+
+
+def hack_plotting_to_work(image_points, image_hw):
+    im_h, im_w = image_hw
+    image_points_x = image_points[0]
+    image_points_y = image_points[1]
+    image_points_x = im_w - image_points_x
+    image_points_y = im_h - image_points_y
+
+    image_points[0] = image_points_x
+    image_points[1] = image_points_y
+    return image_points
+
+
+def main(camera_sphere, co3d_file, pointcloud_file, side_by_side=False):
     co3d_data = np.load(co3d_file, allow_pickle=True)
 
     co3d_data = co3d_data["arr_0"][None][0]
@@ -131,24 +163,34 @@ def main(camera_sphere, co3d_file, pointcloud_file):
     points = pointcloud.points
     colors = pointcloud.active_scalars / 255.0
     homog_points = np.concatenate((points.T, np.ones((1, points.shape[0]))))
-
+    if side_by_side:
+        fig, axs = plt.subplots(1, 2)
     for frame_param in frame_params:
         image = load_image_from_frame_param(frame_param, co3d_file)
         K, R, t = extract_K_R_t_from_frame_param(frame_param)
         proj = create_projection(K, R, t)
         image_space = project_to_image(proj, homog_points)
 
-        fig, axs = plt.subplots(1, 2)
-
         image_space, downsampled_colors = downsample_points_colors(image_space, colors)
+
+        # image_space = convert_point_image_space_for_plotting(
+        #    image_space, image.shape[0]
+        # )
+        image_space = hack_plotting_to_work(image_space, image.shape[:2])
         # print(image_space.shape)
         # plt.scatter(image_space[0], image_space[1])
-        axs[0].scatter(image_space[0], image_space[1], c=downsampled_colors)
-        axs[0].set_aspect("equal")
-        axs[0].set_xlim((0, image.shape[1]))
-        axs[0].set_ylim((0, image.shape[0]))
-        axs[1].imshow(image)
-        plt.show()
+        if side_by_side:
+            scat = axs[0].scatter(image_space[0], image_space[1], c=downsampled_colors)
+            axs[0].set_aspect("equal")
+            axs[0].set_xlim((0, image.shape[1]))
+            axs[0].set_ylim((0, image.shape[0]))
+            axs[1].imshow(image)
+        else:
+            plt.imshow(image)
+            scat = plt.scatter(image_space[0], image_space[1], c=downsampled_colors)
+
+        plt.pause(3)
+        scat.remove()
 
     for key in co3d_data.keys():
         data = co3d_data[key]
