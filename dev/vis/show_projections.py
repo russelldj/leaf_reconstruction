@@ -52,9 +52,10 @@ def convert_NDC_to_screen(im_w, im_h, fx_ndc, fy_ndc, px_ndc, py_ndc):
     return fx_screen, fy_screen, px_screen, py_screen
 
 
-def create_projection(K, R, t, method="naive"):
+def create_projection(K, R, t, method="flipped"):
     if method == "naive":
         extrinsics = np.concatenate((R, np.expand_dims(t, axis=1)), axis=1)
+        print(K)
         proj = K @ extrinsics
     if method == "flipped":
         R = np.array(R).T
@@ -173,19 +174,20 @@ def main(camera_sphere, co3d_file, pointcloud_file, side_by_side=False):
 
         image_space, downsampled_colors = downsample_points_colors(image_space, colors)
 
-        # image_space = convert_point_image_space_for_plotting(
-        #    image_space, image.shape[0]
-        # )
-        image_space = hack_plotting_to_work(image_space, image.shape[:2])
         # print(image_space.shape)
         # plt.scatter(image_space[0], image_space[1])
         if side_by_side:
+            image_space = convert_point_image_space_for_plotting(
+                image_space, image.shape[0]
+            )
+            image_space = hack_plotting_to_work(image_space, image.shape[:2])
             scat = axs[0].scatter(image_space[0], image_space[1], c=downsampled_colors)
             axs[0].set_aspect("equal")
             axs[0].set_xlim((0, image.shape[1]))
             axs[0].set_ylim((0, image.shape[0]))
             axs[1].imshow(image)
         else:
+            image_space = hack_plotting_to_work(image_space, image.shape[:2])
             plt.imshow(image)
             scat = plt.scatter(image_space[0], image_space[1], c=downsampled_colors)
 
